@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>OA Numbers — Browse</title>
+  <link rel="stylesheet" href="/assets/app.css" />
+</head>
+<body>
+<header>
+  <div class="nav">
+    <div class="brand">OA Numbers</div>
+    <nav>
+      <a href="/">Numbers</a>
+      <a href="/lineage.html">Lineage</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="panel">
+    <div class="kpis" id="kpis">
+      <div class="kpi"><div class="big" id="kpiTotal">—</div><div class="small">Lodge instances</div></div>
+      <div class="kpi"><div class="big" id="kpiActive">—</div><div class="small">Active</div></div>
+      <div class="kpi"><div class="big" id="kpiFdlNo">—</div><div class="small">FDL not issued</div></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="row">
+      <div>
+        <label for="filterStatus">Status</label>
+        <select id="filterStatus">
+          <option value="">All</option>
+          <option value="Active">Active</option>
+          <option value="Disbanded">Disbanded</option>
+          <option value="Merged/Replaced">Merged/Replaced</option>
+          <option value="Renamed">Renamed</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div>
+        <label for="filterFdl">FDL</label>
+        <select id="filterFdl">
+          <option value="">All</option>
+          <option value="true">FDL issued</option>
+          <option value="false">FDL not issued</option>
+        </select>
+      </div>
+      <div>
+        <label for="search">Search (ID or name)</label>
+        <input id="search" placeholder="e.g. 9B or Cowaw" />
+      </div>
+      <div>
+        <label>&nbsp;</label>
+        <button id="btnReload">Reload</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="muted" id="loading">Loading lodges…</div>
+    <div class="grid" id="grid" style="display:none;"></div>
+  </div>
+
+  <div class="panel">
+    <div class="muted">
+      Data sources: Blue Book dataset + ISCA change log; external references later (OAInsignia / PatchVault).
+    </div>
+  </div>
+</main>
+
+<script type="module">
+  import { apiGet, escapeHtml } from "/assets/app.js";
+
+  const elGrid = document.getElementById("grid");
+  const elLoading = document.getElementById("loading");
+  const elStatus = document.getElementById("filterStatus");
+  const elFdl = document.getElementById("filterFdl");
+  const elSearch = document.getElementById("search");
+  const elReload = document.getElementById("btnReload");
+
+  const kpiTotal = document.getElementById("kpiTotal");
+  const kpiActive = document.getElementById("kpiActive");
+  const kpiFdlNo = document.getElementById("kpiFdlNo");
+
+  let all = [];
+
+  function applyFilters() {
+    const status = elStatus.value;
+    const fdl = elFdl.value;
+    const q = elSearch.value.trim().toLowerCase();
+
+    const filtered = all.filter(r => {
+      if (status && (r.status !== status)) return false;
+      if (fdl === "true" && r.fdl_issued !== true) return false;
+      if (fdl === "false" && r.fdl_issued !== false) return false;
+      if (q) {
+        const hay = `${r.lodge_id} ${r.name}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+
+    elGrid.innerHTML = filtered.map(r => {
+      const badge = r.is_active ? "Active" : (r.status || "—");
+      return `
+        <a class="tile" href="/lodge.html?id=${encodeURIComponent(r.lodge_id)}">
+          ${escapeHtml(r.lodge_id)}
+          <div class="badge">${escapeHtml(badge)}</div>
+        </a>
+      `;
+    }).join("");
+
+    elLoading.style.display = "none";
+    elGrid.style.display = "grid";
+  }
+
+  async function load() {
+    elLoading.style.display = "block";
+    elGrid.style.display = "none";
+    elLoading.textContent = "Loading lodges…";
+
+    // Worker endpoint returns the "numbers completion index" list.
+    all = await apiGet("/lodges");
+
+    kpiTotal.textContent = String(all.length);
+    kpiActive.textContent = String(all.filter(x => x.is_active).length);
+    kpiFdlNo.textContent = String(all.filter(x => x.fdl_issued === false).length);
+
+    applyFilters();
+  }
+
+  elStatus.addEventListener("change", applyFilters);
+  elFdl.addEventListener("change", applyFilters);
+  elSearch.addEventListener("input", () => {
+    // tiny debounce
+    clearTimeout(window.__t);
+    window.__t = setTimeout(applyFilters, 120);
+  });
+  elReload.addEventListener("click", load);
+
+  load().catch(err => {
+    elLoading.textContent = `Error: ${err.message}`;
+  });
+</script>
+</body>
+</html>
