@@ -1,6 +1,6 @@
 // Configure your API base (Cloudflare Worker URL).
 // Example: https://oa-numbers-api.<your-subdomain>.workers.dev
-const API_BASE = window.__API_BASE__ || "/api"; // if you map /api/* to the worker later
+const API_BASE = "https://oa-numbers-api.spanky.workers.dev"; // if you map /api/* to the worker later
 
 export async function apiGet(path) {
   const url = `${API_BASE}${path}`;
