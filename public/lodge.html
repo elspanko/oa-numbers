@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>OA Numbers — Lodge</title>
+  <link rel="stylesheet" href="/assets/app.css" />
+</head>
+<body>
+<header>
+  <div class="nav">
+    <div class="brand"><a href="/" style="color:inherit;text-decoration:none;">OA Numbers</a></div>
+    <nav>
+      <a href="/">Numbers</a>
+      <a href="/lineage.html">Lineage</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="panel" id="top">
+    <div class="muted" id="loading">Loading…</div>
+  </div>
+
+  <div class="panel" id="historyPanel" style="display:none;">
+    <div style="font-weight:700;margin-bottom:8px;">History</div>
+    <div id="history" class="muted"></div>
+  </div>
+
+  <div class="panel" id="refsPanel" style="display:none;">
+    <div style="font-weight:700;margin-bottom:8px;">References</div>
+    <div id="refs"></div>
+  </div>
+</main>
+
+<script type="module">
+  import { apiGet, qs, escapeHtml, statusPill } from "/assets/app.js";
+
+  const lodgeId = qs("id");
+  const elTop = document.getElementById("top");
+  const elLoading = document.getElementById("loading");
+  const elHistPanel = document.getElementById("historyPanel");
+  const elHistory = document.getElementById("history");
+  const elRefsPanel = document.getElementById("refsPanel");
+  const elRefs = document.getElementById("refs");
+
+  if (!lodgeId) {
+    elLoading.textContent = "Missing ?id= (example: /lodge.html?id=9A)";
+  } else {
+    (async () => {
+      const lodge = await apiGet(`/lodge/${encodeURIComponent(lodgeId)}`);
+
+      document.title = `OA Numbers — ${lodge.lodge_id}`;
+
+      elTop.innerHTML = `
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+          <div>
+            <div style="font-size:26px;font-weight:800;">${escapeHtml(lodge.lodge_id)} — ${escapeHtml(lodge.name || "—")}</div>
+            <div style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+              ${statusPill(lodge.status)}
+              <span class="pill">Formed: ${escapeHtml(lodge.formed_year ?? "—")}</span>
+              <span class="pill">FDL issued: ${lodge.fdl_issued === true ? "Yes" : lodge.fdl_issued === false ? "No" : "Unknown"}</span>
+              <span class="pill">Lineage depth: ${escapeHtml(lodge.lineage_depth ?? "—")}</span>
+            </div>
+            <div class="muted" style="margin-top:10px;">
+              ${escapeHtml(lodge.city ?? "")}${lodge.city ? ", " : ""}${escapeHtml(lodge.state ?? "")}
+              ${lodge.totem ? " • Totem: " + escapeHtml(lodge.totem) : ""}
+            </div>
+          </div>
+          <div>
+            <a class="linkbtn" href="/">← Back to numbers</a>
+          </div>
+        </div>
+      `;
+
+      if (lodge.history && lodge.history.trim()) {
+        elHistPanel.style.display = "block";
+        elHistory.innerHTML = escapeHtml(lodge.history).replaceAll("\n", "<br>");
+      }
+
+      // Reference links (v1: lodge-level; later you can add issue-level)
+      const oa = `https://oainsignia.com/#/lodge/${encodeURIComponent(lodge.lodge_id)}/patches`;
+      // PatchVault lodge URL patterns can change; keep as search fallback initially:
+      const pv = `https://www.patchvault.org/?s=${encodeURIComponent(lodge.lodge_id)}`;
+
+      elRefsPanel.style.display = "block";
+      elRefs.innerHTML = `
+        <a class="linkbtn" target="_blank" rel="noreferrer" href="${oa}">OAInsignia (lodge issues)</a>
+        <span style="display:inline-block;width:10px;"></span>
+        <a class="linkbtn" target="_blank" rel="noreferrer" href="${pv}">PatchVault (search)</a>
+      `;
+
+    })().catch(err => {
+      elLoading.textContent = `Error: ${err.message}`;
+    });
+  }
+</script>
+</body>
+</html>
