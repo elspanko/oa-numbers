@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>OA Numbers — Lineage</title>
+  <link rel="stylesheet" href="/assets/app.css" />
+</head>
+<body>
+<header>
+  <div class="nav">
+    <div class="brand"><a href="/" style="color:inherit;text-decoration:none;">OA Numbers</a></div>
+    <nav>
+      <a href="/">Numbers</a>
+      <a href="/lineage.html">Lineage</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="panel">
+    <div class="row">
+      <div>
+        <label for="id">Lodge ID</label>
+        <input id="id" placeholder="e.g. 9A" />
+      </div>
+      <div>
+        <label>&nbsp;</label>
+        <button id="go">Show lineage</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="muted" id="out">Enter a lodge ID to view related lineage events.</div>
+  </div>
+</main>
+
+<script type="module">
+  import { apiGet, escapeHtml } from "/assets/app.js";
+
+  const input = document.getElementById("id");
+  const btn = document.getElementById("go");
+  const out = document.getElementById("out");
+
+  async function run() {
+    const id = input.value.trim().toUpperCase();
+    if (!id) return;
+    out.textContent = "Loading…";
+    const rows = await apiGet(`/lineage/${encodeURIComponent(id)}`);
+    if (!rows.length) {
+      out.textContent = "No lineage events found in current dataset for that lodge.";
+      return;
+    }
+    out.innerHTML = `
+      <div style="font-weight:700;margin-bottom:8px;">Lineage events for ${escapeHtml(id)}</div>
+      <div class="muted">${rows.map(r => `
+        <div style="padding:8px 0;border-top:1px solid rgba(255,255,255,0.08);">
+          <div><b>${escapeHtml(String(r.year))}</b> — ${escapeHtml(r.event)}</div>
+          <div>Related: ${escapeHtml(r.related_name || "—")} ${escapeHtml(String(r.related_lodge_number || ""))}</div>
+        </div>
+      `).join("")}</div>
+    `;
+  }
+
+  btn.addEventListener("click", run);
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") run(); });
+</script>
+</body>
+</html>
